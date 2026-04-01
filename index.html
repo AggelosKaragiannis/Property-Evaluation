@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Property Evaluator</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f3ee;
+      --card: #ffffff;
+      --border: #e0dbd0;
+      --text: #1a1a18;
+      --muted: #8a8880;
+      --accent: #1D9E75;
+      --accent-light: #e1f5ee;
+      --mono: 'DM Mono', monospace;
+      --sans: 'DM Sans', sans-serif;
+    }
+
+    body {
+      font-family: var(--sans);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 2rem 1rem 4rem;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 420px;
+    }
+
+    header {
+      margin-bottom: 2rem;
+    }
+
+    .tag {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: var(--accent-light);
+      padding: 4px 10px;
+      border-radius: 4px;
+      margin-bottom: 0.75rem;
+    }
+
+    h1 {
+      font-size: 26px;
+      font-weight: 300;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+      color: var(--text);
+    }
+
+    h1 span { font-weight: 500; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .card-title {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 1.25rem;
+    }
+
+    .score-field { margin-bottom: 1.1rem; }
+    .score-field:last-child { margin-bottom: 0; }
+
+    .score-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 6px;
+    }
+
+    .score-name {
+      font-size: 14px;
+      font-weight: 400;
+      color: var(--text);
+    }
+
+    .score-num {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--accent);
+    }
+
+    input[type=range] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 3px solid white;
+      box-shadow: 0 0 0 1px var(--accent);
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+
+    input[type=range]::-webkit-slider-thumb:active { transform: scale(1.2); }
+
+    .number-field { margin-bottom: 0; }
+
+    .field-label {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    input[type=number] {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-family: var(--mono);
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--text);
+      background: var(--bg);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input[type=number]:focus { border-color: var(--accent); }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.25rem 0;
+    }
+
+    .toggle-label { font-size: 14px; color: var(--text); }
+
+    .switch {
+      position: relative;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+
+    .switch input { opacity: 0; width: 0; height: 0; }
+
+    .knob {
+      position: absolute;
+      inset: 0;
+      background: var(--border);
+      border-radius: 22px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .knob::before {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      left: 3px;
+      top: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+
+    .switch input:checked + .knob { background: var(--accent); }
+    .switch input:checked + .knob::before { transform: translateX(18px); }
+
+    .sqm-field {
+      margin-top: 1rem;
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transition: max-height 0.25s ease, opacity 0.2s ease, margin 0.2s;
+    }
+
+    .sqm-field.visible {
+      max-height: 80px;
+      opacity: 1;
+    }
+
+    .results {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 1rem;
+    }
+
+    .result-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem;
+    }
+
+    .result-box.accent {
+      background: var(--accent-light);
+      border-color: #9fe1cb;
+    }
+
+    .result-label {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      font-family: var(--mono);
+    }
+
+    .result-box.accent .result-label { color: #0f6e56; }
+
+    .result-value {
+      font-family: var(--mono);
+      font-size: 20px;
+      font-weight: 500;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .result-box.accent .result-value { color: var(--accent); }
+
+    .result-unit {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 3px;
+    }
+
+    .result-box.accent .result-unit { color: #1d9e75; }
+
+    .na { color: var(--muted); font-size: 14px; font-family: var(--sans); font-weight: 400; }
+
+    footer {
+      text-align: center;
+      margin-top: 1.5rem;
+      font-size: 12px;
+      color: var(--muted);
+      font-family: var(--mono);
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="tag">Real estate tool</div>
+    <h1>Property<br><span>Evaluator</span></h1>
+  </header>
+
+  <div class="card">
+    <div class="card-title">Scores [0 – 5]</div>
+
+    <div class="score-field">
+      <div class="score-header">
+        <span class="score-name">Location</span>
+        <span class="score-num" id="loc-v">3.0</span>
+      </div>
+      <input type="range" min="0" max="5" step="0.5" value="3" id="loc" oninput="update()">
+    </div>
+
+    <div class="score-field">
+      <div class="score-header">
+        <span class="score-name">Condition</span>
+        <span class="score-num" id="state-v">3.0</span>
+      </div>
+      <input type="range" min="0" max="5" step="0.5" value="3" id="state" oninput="update()">
+    </div>
+
+    <div class="score-field">
+      <div class="score-header">
+        <span class="score-name">Features</span>
+        <span class="score-num" id="feat-v">3.0</span>
+      </div>
+      <input type="range" min="0" max="5" step="0.5" value="3" id="feat" oninput="update()">
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Market value</div>
+    <div class="number-field">
+      <label class="field-label">Price per square meter (€/m²)</label>
+      <input type="number" id="newval" value="3000" min="0" step="50" oninput="update()">
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="toggle-row">
+      <span class="toggle-label">Include square meters</span>
+      <label class="switch">
+        <input type="checkbox" id="sqm-toggle" onchange="toggleSqm()">
+        <span class="knob"></span>
+      </label>
+    </div>
+    <div class="sqm-field" id="sqm-field">
+      <label class="field-label">Square meters (m²)</label>
+      <input type="number" id="sqm" value="80" min="0" step="1" oninput="update()">
+    </div>
+  </div>
+
+  <div class="results">
+    <div class="result-box accent">
+      <div class="result-label">Evaluated</div>
+      <div class="result-value" id="res-sqm">1800</div>
+      <div class="result-unit">€ / m²</div>
+    </div>
+    <div class="result-box" id="total-box">
+      <div class="result-label">Total value</div>
+      <div class="result-value" id="res-total"><span class="na">enter m²</span></div>
+      <div class="result-unit">€</div>
+    </div>
+  </div>
+
+  <footer>v1.0 &nbsp;·&nbsp; property evaluator</footer>
+</div>
+
+<script>
+  function toggleSqm() {
+    const on = document.getElementById('sqm-toggle').checked;
+    document.getElementById('sqm-field').classList.toggle('visible', on);
+    update();
+  }
+
+  function fmt(n, decimals) {
+    return n.toLocaleString('el-GR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+  }
+
+  function update() {
+    const loc   = parseFloat(document.getElementById('loc').value);
+    const state = parseFloat(document.getElementById('state').value);
+    const feat  = parseFloat(document.getElementById('feat').value);
+    const newval = parseFloat(document.getElementById('newval').value) || 0;
+    const sqmOn  = document.getElementById('sqm-toggle').checked;
+    const sqm    = sqmOn ? (parseFloat(document.getElementById('sqm').value) || 0) : 0;
+
+    document.getElementById('loc-v').textContent   = loc.toFixed(1);
+    document.getElementById('state-v').textContent = state.toFixed(1);
+    document.getElementById('feat-v').textContent  = feat.toFixed(1);
+
+    const sqmEval = ((loc + state + feat) * newval) / (3 * 5);
+    document.getElementById('res-sqm').textContent = fmt(sqmEval, 0);
+
+    const totalEl = document.getElementById('res-total');
+    if (sqmOn && sqm > 0) {
+      totalEl.textContent = fmt(sqm * sqmEval, 0);
+    } else {
+      totalEl.innerHTML = '<span class="na">enter m²</span>';
+    }
+  }
+
+  update();
+</script>
+</body>
+</html>
